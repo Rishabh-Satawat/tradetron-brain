@@ -1,0 +1,7 @@
+﻿access_token.txt
+*.env
+config_secret*
+credentials*
+__pycache__/
+*.pyc
+*.log
