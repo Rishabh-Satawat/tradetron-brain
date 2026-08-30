@@ -1,0 +1,20 @@
+# Tradetron Brain
+
+> Verified knowledge base for building Tradetron algo strategies with Zerodha Kite
+> market data. The corrections ledger is the only authoritative source; every other
+> file is subordinate to it and may contain stale claims.
+
+Read AGENTS.md before writing anything. Claims are tagged [V] verified,
+[O] official doc, [I] inferred, [U] unverified. Files under 90-archive are
+historical evidence containing known errors, not current truth.
+
+## Canonical
+
+- [Corrections ledger](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/00_CORRECTIONS_LEDGER.md): verified exchange parameters, errors already made, standing rules. Overrides everything.
+- [Task register](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/01_TASK_REGISTER.md): live task state, owners, blockers.
+- [Agent rules](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/AGENTS.md): permissions, evidence tags, prohibitions.
+
+## Optional
+
+- [Document template](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/_TEMPLATE.md): front matter contract for new files.
+- [Changelog](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/CHANGELOG.md)

@@ -1,8 +1,14 @@
-﻿access_token.txt
+_staging/
 *.env
-config_secret*
-credentials*
+.env
+access_token*
+request_token*
+*secret*
+*credential*
+kite_session*
 __pycache__/
 *.pyc
 *.log
+*.duckdb
+*.parquet
 write*.ps1
