@@ -1,84 +1,76 @@
-#!/usr/bin/env python3
 """
-Dhan Profile Probe — Read-only verification of Dhan account access.
-
-Checks:
-- API authentication (access token validity)
-- Account profile (client ID, account type)
-- Data API subscription status (dataPlan: Active/Inactive)
-
-Hard constraints (from AGENTS.md E5-E8):
-- READ ONLY: no order placement, no GTT, no kill switch
-- NO SECRET LEAKAGE: never print full access token
-- FAIL CLOSED: exit on any auth error
-
-Usage:
-    python dhan_profile_probe.py
-
-Environment:
-    DHAN_CLIENT_ID      Client ID (e.g., "1111831735")
-    DHAN_ACCESS_TOKEN   Live access token (never commit)
-
-Exit codes:
-    0 = success (dataPlan Active)
-    1 = auth failed
-    2 = dataPlan Inactive (subscription required)
-    3 = network error
+dhan_profile_probe.py -- READ ONLY. No SDK. Reads token from secrets file only.
+Confirms auth works and reports Data API plan status. Never prints the token.
 """
+import base64, datetime, json, os, urllib.error, urllib.request
 
-import os
-import sys
-from dhanhq import dhanhq
+SECRETS = r"C:\kite-agent\secrets\dhan.env"
+BASE = "https://api.dhan.co/v2"
+
+def load_env(path):
+    vals = {}
+    with open(path, "r", encoding="utf-8-sig") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                vals[k.strip()] = v.strip().strip('"').strip("'")
+    return vals
+
+def token_expiry(tok):
+    try:
+        p = tok.split(".")[1]; p += "=" * (-len(p) % 4)
+        return datetime.datetime.fromtimestamp(
+            json.loads(base64.urlsafe_b64decode(p))["exp"])
+    except Exception:
+        return None
 
 def main():
-    # Load credentials from environment (never hardcode)
-    client_id = os.getenv("DHAN_CLIENT_ID")
-    access_token = os.getenv("DHAN_ACCESS_TOKEN")
-    
-    if not client_id or not access_token:
-        print("❌ ERROR: Missing DHAN_CLIENT_ID or DHAN_ACCESS_TOKEN environment variables")
-        print("Set them in PowerShell:")
-        print('  $env:DHAN_CLIENT_ID = "1111831735"')
-        print('  $env:DHAN_ACCESS_TOKEN = "YOUR_TOKEN_HERE"')
-        sys.exit(1)
-    
+    if not os.path.exists(SECRETS):
+        print("MISSING", SECRETS); return
+    env = load_env(SECRETS)
+    tok = env.get("DHAN_ACCESS_TOKEN", "")
+    cid = env.get("DHAN_CLIENT_ID", "")
+    if not tok or not cid:
+        print("dhan.env is missing DHAN_CLIENT_ID or DHAN_ACCESS_TOKEN"); return
+
+    exp = token_expiry(tok)
+    print("client id len:", len(cid), "| token len:", len(tok))
+    if exp:
+        hrs = (exp - datetime.datetime.now()).total_seconds() / 3600
+        print("token expires:", exp, "(", round(hrs, 2), "hours left )")
+        if hrs <= 0:
+            print(">>> TOKEN EXPIRED. Generate a new one on web.dhan.co first.")
+            return
+
+    req = urllib.request.Request(BASE + "/profile", method="GET")
+    req.add_header("access-token", tok)
+    req.add_header("client-id", cid)
+    req.add_header("Accept", "application/json")
     try:
-        # Initialize Dhan client
-        dhan = dhanhq(client_id, access_token)
-        
-        # Fetch profile (read-only call)
-        print("🔍 Fetching Dhan account profile...")
-        profile = dhan.get_profile()
-        
-        if not profile or "data" not in profile:
-            print("❌ ERROR: Invalid profile response")
-            sys.exit(1)
-        
-        data = profile["data"]
-        
-        # Print key fields (mask sensitive data)
-        print(f"\n✅ Account Profile Retrieved:")
-        print(f"   Client ID:     {data.get('clientId', 'N/A')}")
-        print(f"   Account Type:  {data.get('accountType', 'N/A')}")
-        print(f"   Data Plan:     {data.get('dataPlan', 'N/A')}")
-        print(f"   Trading Plan:  {data.get('tradingPlan', 'N/A')}")
-        
-        # Check data plan status
-        data_plan = data.get('dataPlan', '').lower()
-        if data_plan != 'active':
-            print(f"\n⚠️  WARNING: Data API subscription NOT active")
-            print(f"   Current status: {data.get('dataPlan', 'Unknown')}")
-            print(f"   Subscribe at: https://dhanhq.co/api-documentation")
-            print(f"   Cost: ₹499/month (required for option chain & Greeks)")
-            sys.exit(2)
-        
-        print(f"\n✅ SUCCESS: Data API subscription is Active")
-        print(f"   Token prefix: {access_token[:8]}... (valid)")
-        sys.exit(0)
-        
+        with urllib.request.urlopen(req, timeout=25) as r:
+            status, body = r.status, r.read().decode("utf-8", "replace")
+    except urllib.error.HTTPError as e:
+        status, body = e.code, e.read().decode("utf-8", "replace")
     except Exception as e:
-        print(f"❌ ERROR: {type(e).__name__}: {e}")
-        sys.exit(3)
+        print("NETWORK ERROR:", repr(e)); return
+
+    print("\nGET /profile -> HTTP", status)
+    print(body[:1200])
+
+    if status == 200:
+        try:
+            d = json.loads(body)
+            d = d.get("data", d)
+            print("\ndataPlan     :", d.get("dataPlan", "<absent>"))
+            print("dataValidity :", d.get("dataValidity", "<absent>"))
+            print("activeSegment:", d.get("activeSegment", "<absent>"))
+        except Exception as e:
+            print("could not parse JSON:", repr(e))
+    elif status == 401 and "806" in body:
+        print("\n806 = Data APIs not subscribed on this account/plan.")
+    elif status == 401:
+        print("\n401 without 806 = token problem. Regenerate on web.dhan.co.")
 
 if __name__ == "__main__":
     main()
