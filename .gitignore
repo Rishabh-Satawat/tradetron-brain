@@ -12,3 +12,9 @@ __pycache__/
 *.duckdb
 *.parquet
 write*.ps1
+# never commit account or secret material
+*token*.json
+*.env
+runtime/
+**/private/
+
