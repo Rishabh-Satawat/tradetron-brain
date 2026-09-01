@@ -5,7 +5,7 @@ building Tradetron strategies with Zerodha Kite market data.
 
 ## Hierarchy of truth
 
-1. 00_CORRECTIONS_LEDGER.md wins over everything, including your own memory.
+1. 01_PLAN/00_CORRECTIONS_LEDGER.md is the canonical corrections ledger and wins over everything, including your own memory. 00_CORRECTIONS_LEDGER.md is historical only.
 2. An official exchange circular or a live broker API response wins over any doc.
 3. Files in 90-archive/raw-imports are historical evidence, NOT current truth.
    They contain known errors. Never quote them as fact.
@@ -31,7 +31,7 @@ Never fabricate a tradingsymbol. If you do not have the dump, say so and stop.
 ## Write permissions
 
 - Agents write ONLY inside inbox/<your-name>/. Nowhere else. Ever.
-- Never edit 00_CORRECTIONS_LEDGER.md, 01_TASK_REGISTER.md, README.md, or
+- Never edit 01_PLAN/00_CORRECTIONS_LEDGER.md, 01_TASK_REGISTER.md, README.md, or
   anything in a numbered folder. Propose; the operator promotes.
 - One topic per file. Filename: lowercase-with-hyphens.md, no spaces, no "&".
 - Every file starts with the YAML front matter block from _TEMPLATE.md.

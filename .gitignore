@@ -17,4 +17,5 @@ write*.ps1
 *.env
 runtime/
 **/private/
+70-ops/local/
 

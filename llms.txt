@@ -2,7 +2,7 @@
 
 > Verified knowledge base for building Tradetron algo strategies with Zerodha Kite
 > market data. The corrections ledger is the only authoritative source; every other
-> file is subordinate to it and may contain stale claims.
+> file is subordinate to it and may contain stale claims. The canonical path is `01_PLAN/00_CORRECTIONS_LEDGER.md`.
 
 Read AGENTS.md before writing anything. Claims are tagged [V] verified,
 [O] official doc, [I] inferred, [U] unverified. Files under 90-archive are
@@ -10,7 +10,7 @@ historical evidence containing known errors, not current truth.
 
 ## Canonical
 
-- [Corrections ledger](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/00_CORRECTIONS_LEDGER.md): verified exchange parameters, errors already made, standing rules. Overrides everything.
+- [Corrections ledger](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/feat/foundation-cleanup/01_PLAN/00_CORRECTIONS_LEDGER.md): verified exchange parameters, errors already made, standing rules. Overrides everything. The root file is historical.
 - [Task register](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/01_TASK_REGISTER.md): live task state, owners, blockers.
 - [Agent rules](https://raw.githubusercontent.com/Rishabh-Satawat/tradetron-brain/main/AGENTS.md): permissions, evidence tags, prohibitions.
 

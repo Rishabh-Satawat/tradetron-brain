@@ -1,4 +1,5 @@
-﻿# [SUPERSEDED 2026-09-01 by 60-tools/python/zerodha_charges.py]
+# SUPERSEDED-FOR-TOTALS 2026-09-01 by 60-tools/python/zerodha_charges.py
+# [SUPERSEDED 2026-09-01 by 60-tools/python/zerodha_charges.py]
 # Rounding model was WRONG (round-once-at-total). See ledger V17.
 # Retained for the exercise-STT / expiry-leg logic ONLY. Do not cite
 # its totals.

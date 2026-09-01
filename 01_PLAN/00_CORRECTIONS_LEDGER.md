@@ -1,4 +1,4 @@
-﻿# CORRECTIONS LEDGER — VERIFIED FACTS
+# CORRECTIONS LEDGER — VERIFIED FACTS
 All entries below were printed by a script on this machine, or cited to a URL.
 Evidence: 70-ops\status\B0_probe_2026-09-01.txt, B1_join_2026-09-01.txt
 
@@ -130,3 +130,49 @@ V24 EMPIRICAL COST BENCHMARKS (BSE, post-2026-04-01, squared off):
     These are the floor any strategy must clear. Input to verdict-policy.yaml.
 
 <!-- END OF ROUND 4 -->
+
+## SECTION G - MIGRATED FROM ROOT LEDGER
+
+The following facts were present in the historical root ledger and were not duplicated by V1-V24. Original evidence tags are preserved.
+
+### G1. Exchange and platform facts
+
+- NIFTY 50 lot size is 65, BANKNIFTY is 30, FINNIFTY is 60, MIDCPNIFTY is 120, and SENSEX is 20. [V]
+- Weekly expiries are available for NIFTY 50 on NSE and SENSEX on BSE; BANKNIFTY, FINNIFTY, MIDCPNIFTY, and BANKEX are monthly-only under the recorded rule. [V]
+- Kite historical data is included with the base plan; the formerly cited paid historical-data add-on was abolished on 08-Feb-2025. [V]
+
+### G2. Prior agent errors and Tradetron semantics
+
+- A fabricated BFO SENSEX symbol was rejected as malformed. [B]
+- `Position Detail` returns four inputs and three outputs; the five-return keyword is `TRADED INSTRUMENT`. [B]
+- The authoring artifact is strategy Markdown; JSON is not the primary authoring format. [B]
+- PNL in a Set Exit returns whole-strategy P&L; `PNL Underlying` is required when set scope is intended. [B]
+- FastBT can model India VIX, OI, bid-ask, VWAP, slippage, MCX, crypto, and stock options; older engine descriptions that denied these capabilities are pre-FastBT and stale. [B]
+- FastBT brokerage defaults to zero and must be overridden explicitly; its separate run charge is not brokerage. [B]
+
+### G3. Official and unresolved Tradetron items
+
+- `Traded Instrument` returns PRICE, QUANTITY, STRIKE, PNL, and TIME; PRICE is entry/fill price and PNL is `(LTP - Entry Price) * Qty Traded`, but exit selection is unsupported. [O]
+- Universal Exit TSL values are entered at 1X multiplier; PNL and Max Profit have different multiplier behavior. [O]
+- Init Var is written once per run counter at bot assignment, is not trade-scoped, and is not rewritten daily while the counter persists. [O]
+- Find Strike uses the day's opening price and a bounded strike band; it returns `none` outside that band and is not reliable for equity options or compatible with MCX/MIDCP. [O]
+- `Open positions` is not a live position counter. [O]
+- Tradetron's documented spellings `Bolinger` and `Donchain` must be preserved. [O]
+- Tradetron MCP connectivity and OAuth behavior remain unproven; the hosted Kite MCP uses a separate application-layer login mechanism. [O]
+
+### G4. Known holes and standing rules
+
+- The keyword documentation references unresolved images, so parameter panels are not recoverable from prose alone. [U]
+- FastBT report-surface behavior remains uninspected because the public sample returned HTTP 401. [U]
+- Tradetron export/import losslessness remains pending a round-trip test. [U]
+- Exchange parameters must come from a current instrument dump or retrieved dated circular; never from model memory. [E1]
+- Unknown keyword names, fields, enums, and symbols must be marked UNRETRIEVED rather than invented. [E2]
+- Every claim must carry [V], [O], [I], or [U]; [U] is an acceptable result. [E3]
+- Agents never place orders or create/modify/delete GTTs, and no deployed Tradetron template is edited in place. [E4-E6]
+- Negative results belong in the failure log, and unreviewed agent output stays in `inbox/`. [E7-E8]
+
+### G5. Superseded root-ledger item
+
+The historical root ledger said the Kite Developer app expired on 08-Sep-2026. V16 supersedes that date with the operator-observed 09-Oct-2026 expiry. The stale date is retained only as a contradiction record, not as current truth. [B/U -> V16]
+
+<!-- END OF MIGRATED SECTION G -->

@@ -3,13 +3,15 @@ id: cost-model-in
 title: Indian F&O Frictional Cost Model v2
 domain: market-data
 type: reference
-status: canonical
+status: review
 evidence: V
 verified_on: 2026-08-31
 owner: operator
 ---
 
 # Frictional Cost Model - Indian F&O  (v2)
+
+> **Computation authority:** `60-tools/python/zerodha_charges.py`. This reference is review-only until its historical assumptions are reconciled against that executable authority.
 
 ## Verified rates
 
@@ -19,7 +21,7 @@ owner: operator
 | STT - options | 0.15% | option premium | SELL only | [V] eff 01-Apr-2026 |
 | STT - options (prior) | 0.10% | option premium | SELL only | [V] until 31-Mar-2026 |
 | Exchange - BFO Sensex/Bankex opt | Rs 3,250 / crore | premium turnover | both | [V] BSE 27-Sep-2024 |
-| Exchange - NFO options | Rs 3,503 / crore (assumed) | premium turnover | both | [U] NSE circular NOT retrieved |
+| Exchange - NFO options | Rs 3,553 / crore | premium turnover | both | [V] zerodha_charges.py / Zerodha calculator reconciliation |
 | Stamp duty | 0.003% | PREMIUM value (not notional) | BUY only | [V] NSE |
 | SEBI turnover fee | Rs 10 / crore | turnover | both | [V] |
 | GST | 18% | brokerage + exchange + SEBI | - | [V] |
@@ -45,8 +47,10 @@ turned a real loss into an apparent profit.
 ## RULE 3 - expectancy gate, derived not guessed
 
 Required gross expectancy per STRATEGY round trip >= 3x total friction.
-  2-leg SENSEX : friction ~Rs 123  ->  need >= Rs 370 gross / RT
-  4-leg SENSEX : friction ~Rs 213  ->  need >= Rs 640 gross / RT
+  2-leg SENSEX : friction ~Rs 144  ->  need >= Rs 432 gross / RT
+  4-leg SENSEX : friction ~Rs 211  ->  need >= Rs 633 gross / RT
+
+The prior Rs 123 / Rs 213 figures were contradicted by V24 and are corrected here. Evidence: V24 and 70-ops/status/C2_zerodha_recon_2026-09-01.txt.
 
 ## RULE 4 - "Total Trades" means LEG round-trips  [V]
 

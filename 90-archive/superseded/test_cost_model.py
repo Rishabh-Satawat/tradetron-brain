@@ -1,3 +1,4 @@
+# SUPERSEDED 2026-09-01: rejected legacy cost model; use 60-tools/python/zerodha_charges.py.
 from decimal import Decimal
 from cost_model import Leg, compute_costs, gross_pnl, net_verdict
 

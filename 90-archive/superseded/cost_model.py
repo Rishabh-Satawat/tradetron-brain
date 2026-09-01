@@ -1,3 +1,4 @@
+# SUPERSEDED 2026-09-01: rejected legacy cost model; use 60-tools/python/zerodha_charges.py.
 """Zerodha F&O options cost model. Rates verified 31-Aug-2026 from zerodha.com/charges.
 DO NOT edit rates without updating RATE_SOURCE_DATE and 00_CORRECTIONS_LEDGER.md."""
 from dataclasses import dataclass
