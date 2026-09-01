@@ -69,3 +69,11 @@ PowerShell keyword. See 01_PLAN\00_CONVENTIONS.md.
 ## V14 — Join is reproducible
 bridge_structured_join.py run twice on 2026-09-01 (092322, 132233) produced
 identical counts: MATCHED 4072, KITE_ONLY 0, DHAN_ONLY 3022. Idempotent.
+
+## V15 — Repo state verified [prior UNVERIFIED item CLOSED]
+Commit d793348 "Phase A+B PASS: Kite-Dhan bridge 4072/4072 reproducible, ledger V1-V14"
+Parent 25d0f77 "Brain write 011-013: Dhan probe, token lifecycle, verified-schema master parser"
+Grandparent cd75973 "Add dhan_profile_probe.py, write010.ps1, and Dhan master summary"
+The hash 25d0f77 was earlier flagged [UNVERIFIED] and struck from the plan.
+It is now CONFIRMED as the prior origin/main. Restore it as the Phase-A baseline.
+Line endings: .gitattributes added. LF/CRLF warnings on add are expected on Windows.
