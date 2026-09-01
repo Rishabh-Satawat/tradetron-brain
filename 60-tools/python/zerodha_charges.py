@@ -1,4 +1,4 @@
-﻿# =============================================================================
+# =============================================================================
 # File: 60-tools/python/zerodha_charges.py
 # Runtime: C:\kite-agent\.venv\Scripts\python.exe  (Python 3.14.7)
 #
@@ -17,58 +17,99 @@
 # wrong and produced a permanent ~Rs0.28 mismatch per 4-leg cycle.
 # =============================================================================
 from decimal import Decimal, ROUND_HALF_UP, getcontext
+from pathlib import Path
 import datetime
 
 getcontext().prec = 34
 P2 = Decimal("0.01")
 R1 = Decimal("1")
 
-def _p2(x): return Decimal(x).quantize(P2, rounding=ROUND_HALF_UP)
-def _r1(x): return Decimal(x).quantize(R1, rounding=ROUND_HALF_UP)
-
 D = lambda v: Decimal(str(v))
 
-SEBI_RATE          = D("0.000001")     # [V] Rs10 per crore
-GST_RATE           = D("0.18")         # [V] 18%
-STT_REGIME_CHANGE  = datetime.date(2026, 4, 1)
+CONFIG_PATH = Path(__file__).resolve().parents[2] / "70-ops/config/cost-config.yaml"
 
+def _load_config(path):
+    """Load this deliberately small config subset without a runtime dependency."""
+    result = {}
+    stack = [(-1, result)]
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        body = raw.split(" #", 1)[0].rstrip()
+        indent = len(body) - len(body.lstrip(" "))
+        key, sep, value = body.strip().partition(":")
+        if not sep:
+            continue
+        while stack[-1][0] >= indent:
+            stack.pop()
+        parent = stack[-1][1]
+        value = value.strip()
+        if value == "":
+            parent[key] = {}; stack.append((indent, parent[key])); continue
+        if value == "null": parsed = None
+        elif value.startswith('"') and value.endswith('"'): parsed = value[1:-1]
+        else: parsed = value
+        parent[key] = parsed
+    return result
+
+CFG = _load_config(CONFIG_PATH)
+
+def _required(*keys):
+    value = CFG
+    for key in keys:
+        value = value[key]
+    if value is None:
+        raise RuntimeError("CONFIG_UNSET: " + ".".join(keys))
+    return value
+
+def _rate(*keys):
+    return D(_required("rates", *keys))
+
+def _p(x): return D(x).quantize(P2, rounding=ROUND_HALF_UP)
+def _r1(x): return D(x).quantize(R1, rounding=ROUND_HALF_UP)
+
+STT_REGIME_CHANGE = datetime.date.fromisoformat(_required("regime", "stt_change_date"))
+SEBI_RATE = _rate("sebi_rate")
+GST_RATE = _rate("gst_rate")
 SEGMENTS = {
     "options": {
-        "brokerage": "flat20",
-        "stt_basis": "sell",
-        "stt_post":  D("0.0015"),       # [V] 0.15% sell premium, from 2026-04-01
-        "stt_pre":   D("0.0010"),       # [V] 0.10% sell premium, to 2026-03-31
-        "exch":      {"NSE": D("0.0003553"), "BSE": D("0.000325")},   # [V] panels
-        "stamp":     D("0.00003"),      # [V] 0.003% buy side
+        "brokerage": _required("rates", "options", "brokerage_mode"),
+        "brokerage_per_order": _rate("options", "brokerage_per_order"),
+        "stt_basis": _required("rates", "options", "stt_basis"),
+        "stt_post": _rate("options", "stt_post"), "stt_pre": _rate("options", "stt_pre"),
+        "exch": {"NSE": _rate("options", "exch_nse"), "BSE": _rate("options", "exch_bse")},
+        "stamp": _rate("options", "stamp"),
     },
     "futures": {
-        "brokerage": "pct_capped",
-        "stt_basis": "sell",
-        "stt_post":  D("0.0005"),       # [V] 0.05% sell (panel: 7.6 -> 8)
-        "stt_pre":   D("0.0005"),
-        "exch":      {"NSE": D("0.0000183"), "BSE": D("0")},  # [O] NSE untested
-        "stamp":     D("0.00002"),
+        "brokerage": _required("rates", "futures", "brokerage_mode"),
+        "brokerage_rate": _rate("futures", "brokerage_rate"), "brokerage_cap": _rate("futures", "brokerage_cap_per_order"),
+        "stt_basis": _required("rates", "futures", "stt_basis"),
+        "stt_post": _rate("futures", "stt_post"), "stt_pre": _rate("futures", "stt_pre"),
+        "exch": {"NSE": _rate("futures", "exch_nse"), "BSE": _rate("futures", "exch_bse")},
+        "stamp": _rate("futures", "stamp"),
     },
     "intraday_equity": {
-        "brokerage": "pct_capped",
-        "stt_basis": "sell",
-        "stt_post":  D("0.00025"),
-        "stt_pre":   D("0.00025"),
-        "exch":      {"NSE": D("0.0000307"), "BSE": D("0.0000375")},
-        "stamp":     D("0.00003"),
+        "brokerage": _required("rates", "intraday_equity", "brokerage_mode"),
+        "brokerage_rate": _rate("intraday_equity", "brokerage_rate"), "brokerage_cap": _rate("intraday_equity", "brokerage_cap_per_order"),
+        "stt_basis": _required("rates", "intraday_equity", "stt_basis"),
+        "stt_post": _rate("intraday_equity", "stt_post"), "stt_pre": _rate("intraday_equity", "stt_pre"),
+        "exch": {"NSE": _rate("intraday_equity", "exch_nse"), "BSE": _rate("intraday_equity", "exch_bse")},
+        "stamp": _rate("intraday_equity", "stamp"),
     },
     "delivery_equity": {
-        "brokerage": "zero",
-        "stt_basis": "both",
-        "stt_post":  D("0.0010"),
-        "stt_pre":   D("0.0010"),
-        "exch":      {"NSE": D("0.0000307"), "BSE": D("0.0000375")},  # [O] NSE untested
-        "stamp":     D("0.00015"),
+        "brokerage": _required("rates", "delivery_equity", "brokerage_mode"),
+        "stt_basis": _required("rates", "delivery_equity", "stt_basis"),
+        "stt_post": _rate("delivery_equity", "stt_post"), "stt_pre": _rate("delivery_equity", "stt_pre"),
+        "exch": {"NSE": _rate("delivery_equity", "exch_nse"), "BSE": _rate("delivery_equity", "exch_bse")},
+        "stamp": _rate("delivery_equity", "stamp"),
     },
 }
+STT_EXERCISE_POST = D(_required("stt_exercise", "post"))
+STT_EXERCISE_PRE = D(_required("stt_exercise", "pre"))
+SLIPPAGE_PCT = CFG.get("slippage_pct")
 
-STT_EXERCISE_POST = D("0.0015")     # [V] 0.15% of intrinsic, from 2026-04-01
-STT_EXERCISE_PRE  = D("0.00125")    # [V] 0.125% of intrinsic, to 2026-03-31
+def _p2(x): return D(x).quantize(P2, rounding=ROUND_HALF_UP)
+def _r1(x): return D(x).quantize(R1, rounding=ROUND_HALF_UP)
 
 
 def charges_from_turnover(
@@ -120,14 +161,14 @@ def charges_from_turnover(
     if S["brokerage"] == "zero":
         brokerage_raw = D(0)
     elif S["brokerage"] == "flat20":
-        brokerage_raw = D(billable) * D(20)
+        brokerage_raw = D(billable) * S["brokerage_per_order"]
     else:  # pct_capped: 0.03% or Rs20 per executed order, whichever is lower
         # [O] assumes exactly one buy order and one sell order
         if billable != 2:
             raise ValueError("pct_capped brokerage currently modelled only for "
                              "the 2-order (1 buy + 1 sell) case; got %d" % billable)
-        brokerage_raw = (min(buy_t  * D("0.0003"), D(20))
-                         + min(sell_t * D("0.0003"), D(20)))
+        brokerage_raw = (min(buy_t * S["brokerage_rate"], S["brokerage_cap"])
+                         + min(sell_t * S["brokerage_rate"], S["brokerage_cap"]))
     brokerage = _p2(brokerage_raw)
 
     # --- STT (rounded to whole rupee) --------------------------------------
@@ -171,6 +212,8 @@ def charges_from_turnover(
         "stamp_duty": str(stamp_duty), "gst": str(gst),
         "stt_unrounded": str(stt_premium_raw + stt_exercise_raw),
         "stamp_unrounded": str(stamp_raw),
+        "slippage_pct": SLIPPAGE_PCT,
+        "net_pnl_is_upper_bound": SLIPPAGE_PCT is None,
         "total_charges": str(_p2(total)),
         "gross_pnl": str(_p2(gross)),
         "net_pnl": str(_p2(gross - total)),
@@ -256,6 +299,7 @@ def main():
         print("  %-16s : %s" % (k, r[k]))
     friction_pct = (D(r["total_charges"]) / D(r["gross_pnl"]) * 100)
     print("  %-16s : %s%%" % ("friction/gross", _p2(friction_pct)))
+    print("  slippage_pct    : %s (UNMEASURED; net is an upper bound)" % SLIPPAGE_PCT)
     print()
     print("  [O] stamp duty raw = %s -> rounded to %s. If Zerodha TRUNCATES"
           % (r["stamp_unrounded"], r["stamp_duty"]))

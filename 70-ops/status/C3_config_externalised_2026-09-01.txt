@@ -1,0 +1,62 @@
+
+==============================================================================
+GATE G2 - RECONCILIATION vs zerodha.com/brokerage-calculator panels
+==============================================================================
+PASS P1 options NSE 589/797/20        expected 82.86    got 82.86   
+  turnover 27720      brokerage 40.00    STT 24     exch 9.85     SEBI 0.03   stamp 0    GST 8.98     TOTAL 82.86
+PASS P2 options BSE 476/280/20        expected 61.02    got 61.02   
+  turnover 15120      brokerage 40.00    STT 8      exch 4.91     SEBI 0.02   stamp 0    GST 8.09     TOTAL 61.02
+PASS P3 intraday NSE 1000/1100/400    expected 200.62   got 200.62  
+  turnover 840000     brokerage 40.00    STT 110    exch 25.79    SEBI 0.84   stamp 12   GST 11.99    TOTAL 200.62
+PASS P4 delivery BSE 1000/1100/400    expected 938.16   got 938.16  
+  turnover 840000     brokerage 0.00     STT 840    exch 31.50    SEBI 0.84   stamp 60   GST 5.82     TOTAL 938.16
+PASS P5 futures BSE 500/760/20        expected 16.96    got 16.96   
+  turnover 25200      brokerage 7.56     STT 8      exch 0.00     SEBI 0.03   stamp 0    GST 1.37     TOTAL 16.96
+
+G2 VERDICT: PASS - 5/5 panels reconcile exactly
+
+==============================================================================
+PREDICTION (NOT YET VERIFIED) - Trade leg A priced on the CORRECT
+exchange. Operator screenshot used NSE; SENSEX trades on BSE.
+==============================================================================
+  BSE total = 81.87   (NSE screenshot showed 82.86)
+  CONFIRM THIS IN THE CALCULATOR WITH THE BSE RADIO SELECTED.
+
+==============================================================================
+LIVE TRADE AUDIT - 2026-09-01 SENSEX 03SEP2026 BEAR PUT SPREAD
+==============================================================================
+  Leg A LONG  77700 PE: buy  20 @ 589.75 = 11795 | sell 20 @ 797.65 = 15953
+  Leg B SHORT 77200 PE: sell 20 @ 280.80 =  5616 | buy  20 @ 476.75 =  9535
+  ONE strategy, 2 legs, 4 executed orders, ONE BSE contract note.
+
+  buy_turnover     : 21330
+  sell_turnover    : 21569
+  total_turnover   : 42899
+  gross_pnl        : 239.00
+  brokerage        : 80.00
+  stt              : 32
+  exchange_fee     : 13.94
+  sebi_fee         : 0.04
+  stamp_duty       : 1
+  gst              : 16.92
+  total_charges    : 143.90
+  net_pnl          : 95.10
+  friction/gross   : 60.21%
+  slippage_pct    : None (UNMEASURED; net is an upper bound)
+
+  [O] stamp duty raw = 0.63990 -> rounded to 1. If Zerodha TRUNCATES
+      rather than rounds, total is Rs1 lower. All observed panels
+      had stamp < 0.50 so the two rules are indistinguishable.
+  [O] Assumes ONE contract note. Two notes would round STT/stamp twice.
+
+==============================================================================
+NEGATIVE TESTS (all must raise)
+==============================================================================
+  OK   - bad segment     ValueError
+  OK   - bad exchange    ValueError
+  OK   - empty fixture   ValueError
+  OK   - negative t/o    ValueError
+  OK   - bad date type   TypeError
+  OK   - neg intrinsic   ValueError
+  OK   - 4-leg futures   ValueError
+

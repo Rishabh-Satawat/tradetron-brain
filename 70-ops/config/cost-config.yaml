@@ -1,0 +1,55 @@
+# Charge inputs for 60-tools/python/zerodha_charges.py
+# Every numeric rate is sourced and dated; null means unresolved, never zero.
+verified_on: "2026-09-01"
+sources:
+  zerodha_charges: "https://zerodha.com/charges/"
+  ipft_support: "https://support.zerodha.com/category/account-opening/resident-individual/ri-charges/articles/ipft-charges"
+regime:
+  stt_change_date: "2026-04-01"
+rounding:
+  paise_unit: "0.01"
+  rupee_unit: "1"
+rates:
+  sebi_rate: "0.000001" # [V] Rs10 per crore
+  gst_rate: "0.18" # [V] 18%
+  options:
+    brokerage_mode: "flat20"
+    brokerage_per_order: "20" # [V] Rs20 per executed order
+    stt_basis: "sell"
+    stt_post: "0.0015" # [V] 0.15% sell premium from 2026-04-01
+    stt_pre: "0.0010" # [V] 0.10% sell premium to 2026-03-31
+    exch_nse: "0.0003553" # [V] Rs3,553/crore
+    exch_bse: "0.000325" # [V] Rs3,250/crore
+    stamp: "0.00003" # [V] 0.003% buy side
+  futures:
+    brokerage_mode: "pct_capped"
+    brokerage_rate: "0.0003" # [O] 0.03%
+    brokerage_cap_per_order: "20" # [O] Rs20 per order
+    stt_basis: "sell"
+    stt_post: "0.0005" # [V] 0.05% sell
+    stt_pre: "0.0005"
+    exch_nse: "0.0000183" # [O] not independently tested
+    exch_bse: "0" # [O] no separate BSE charge in fixture
+    stamp: "0.00002"
+  intraday_equity:
+    brokerage_mode: "pct_capped"
+    brokerage_rate: "0.0003" # [O] 0.03%
+    brokerage_cap_per_order: "20" # [O] Rs20 per order
+    stt_basis: "sell"
+    stt_post: "0.00025"
+    stt_pre: "0.00025"
+    exch_nse: "0.0000307" # [V] 0.00307%
+    exch_bse: "0.0000375"
+    stamp: "0.00003"
+  delivery_equity:
+    brokerage_mode: "zero"
+    stt_basis: "both"
+    stt_post: "0.0010"
+    stt_pre: "0.0010"
+    exch_nse: "0.0000307" # [V] 0.00307%
+    exch_bse: "0.0000375"
+    stamp: "0.00015"
+stt_exercise:
+  post: "0.0015" # [V] 0.15% intrinsic from 2026-04-01
+  pre: "0.00125" # [V] 0.125% intrinsic to 2026-03-31
+slippage_pct: null # UNMEASURED, not zero; net figures without it are upper bounds.
