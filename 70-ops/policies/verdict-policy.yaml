@@ -1,0 +1,18 @@
+﻿# =============================================================================
+# File: 70-ops/policies/verdict-policy.yaml
+# The ONLY place a business threshold may live. Never imported by a calculator.
+# =============================================================================
+verdict_policy_version: "v1-DRAFT-UNSET"
+
+min_net_expectancy_per_cycle_inr: null
+# [U] BLOCKED ON OPERATOR. The repo previously hard-coded 150; Gemini proposed
+# 200. Both were AI-invented and are REJECTED. Until this is set by the operator
+# with a stated rationale, Phase E may emit only CONDITIONAL or FAIL - never PASS.
+
+max_cycles_per_month: null
+max_capital_at_risk_inr: null          # operator capital is 410250
+requires_operator_signoff: true
+last_reviewed_by: null
+last_reviewed_date: null
+
+<!-- END OF FILE: verdict-policy.yaml -->

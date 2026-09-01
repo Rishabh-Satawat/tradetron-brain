@@ -77,3 +77,56 @@ Grandparent cd75973 "Add dhan_profile_probe.py, write010.ps1, and Dhan master su
 The hash 25d0f77 was earlier flagged [UNVERIFIED] and struck from the plan.
 It is now CONFIRMED as the prior origin/main. Restore it as the Phase-A baseline.
 Line endings: .gitattributes added. LF/CRLF warnings on add are expected on Windows.
+
+## Round 4 - Cost model reconciliation (2026-09-01)
+
+V16 KITE TOKEN EXPIRY. App shows "Expires on 09 Oct 2026". The 2026-09-08
+    date carried in the hub register was WRONG. Not time-critical.
+    Evidence: operator browser check, developers.kite.trade/apps.
+
+V17 ZERODHA ROUNDING ALGORITHM. Zerodha rounds EACH component then sums:
+    STT and stamp duty -> nearest whole rupee; brokerage/exch/SEBI/GST -> 2dp.
+    GST = 18% x (brokerage + exch + SEBI) on unrounded inputs.
+    Proof: 82.86 = 40+24+9.85+8.98+0.03+0 across 5 calculator panels.
+    RETRACTS the round-once-at-total design in cost_engine.py, which was
+    WRONG (Fixture C: engine 210.89 vs Zerodha 210.61).
+    Superseded by 60-tools/python/zerodha_charges.py.
+    Evidence: operator screenshots + 70-ops/status/C2_zerodha_recon_2026-09-01.txt
+
+V18 RATE CORRECTIONS. Equity delivery/intraday NSE exch = 0.00307% (NOT
+    0.00297%). F&O futures STT = 0.05% sell (NOT 0.02%). F&O options
+    brokerage = Rs20 x num_executed_orders (NOT hard-coded Rs40).
+
+V19 CALCULATOR QUANTITY SEMANTICS. The QUANTITY field is the position size
+    on ONE side. One SENSEX lot = 20. A buy+sell round trip is 2 ORDERS,
+    not 2 lots. Entering 40 for a 1-lot round trip DOUBLES every charge.
+    Proof: turnover 27720 = (589+797) x 20.
+
+V20 EXCHANGE SELECTOR IS MATERIAL. SENSEX is BSE. Pricing a SENSEX option
+    under NSE inflates exch fee by 9.3% (0.03553% vs 0.0325%).
+
+V21 LIVE TRADE 2026-09-01 - CORRECTED AUDIT. The two Tradetron positions
+    are ONE bear put spread on SENSEX 03SEP2026 (long 77700 PE / short
+    77200 PE), 4 executed orders, entries 11:45:04 and 11:45:05.
+      Buy t/o 21330 | Sell t/o 21569 | GROSS +239.00
+      Friction 143.90 | NET +95.10 | friction = 60.2% of gross
+      Return on 6179 net debit: 3.87% gross -> 1.54% net
+    RETRACTS the GenSpark figure of gross 6190 / net 5960.89, which
+    double-counted leg A and fabricated a sell turnover of 23362.
+
+V22 OPERATIONAL RISK - UNPAIRED EXIT. Long leg exited 13:16:02, short leg
+    13:50:48. For 34 minutes the account held a BARE SHORT 77200 PE
+    (undefined risk, different margin profile). Both legs were labelled
+    "Universal Exit" => Tradetron sequencing issue, not discretionary.
+    ACTION REQUIRED: paired/atomic exit condition before any live capital.
+
+V23 EXPIRY CROSS-VALIDATION. SENSEX 03SEP2026 = Thursday. Live fills
+    independently confirm V6 and the Step-3 holiday calendar. Third
+    independent confirmation of the expiry-weekday model.
+
+V24 EMPIRICAL COST BENCHMARKS (BSE, post-2026-04-01, squared off):
+      2-leg spread, 4 orders  -> ~Rs144 per cycle  [V] live fills
+      4-leg iron fly, 8 orders -> ~Rs211 per cycle [V] Zerodha algorithm
+    These are the floor any strategy must clear. Input to verdict-policy.yaml.
+
+<!-- END OF ROUND 4 -->
