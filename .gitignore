@@ -18,3 +18,7 @@ write*.ps1
 runtime/
 **/private/
 
+
+20-market-data/datasets/*.csv
+secrets/*.env
+secrets/*.txt
