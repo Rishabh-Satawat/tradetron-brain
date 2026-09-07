@@ -73,6 +73,7 @@ def resolve_target_symbol(input_str, opt_type="CE"):
 
 
 def parse_option_symbol(symbol):
+  """Strict fail-closed symbol parser. Fails closed on invalid syntax."""
   clean = symbol.split(":")[-1].strip()
 
   spot_map = {
@@ -82,45 +83,45 @@ def parse_option_symbol(symbol):
       "SENSEX": "BSE:SENSEX-INDEX",
   }
 
-  underlying = "NIFTY"
+  underlying = None
   for u in ["BANKNIFTY", "FINNIFTY", "SENSEX", "NIFTY"]:
     if clean.startswith(u):
       underlying = u
       break
 
-  spot_symbol = spot_map.get(underlying, "NSE:NIFTY50-INDEX")
-  opt_type = "CE" if clean.endswith("CE") else "PE"
+  if not underlying:
+    raise ValueError(f"UNRESOLVED_UNDERLYING: Cannot parse index from '{clean}'")
+
+  spot_symbol = spot_map[underlying]
+  opt_type = "CE" if clean.endswith("CE") else ("PE" if clean.endswith("PE") else None)
+  if not opt_type:
+    raise ValueError(f"INVALID_OPTION_TYPE: Symbol must end in CE or PE: '{clean}'")
 
   # Weekly format: {UNDER}{YY}{M}{DD}{STRIKE}{CE/PE}
-  m_weekly = re.match(
-      r"^([A-Za-z]+)(\d{2})([1-9OND])(\d{2})(\d{4,5})(CE|PE)$", clean
-  )
+  m_weekly = re.match(r"^([A-Za-z]+)(\d{2})([1-9OND])(\d{2})(\d{4,5})(CE|PE)$", clean)
   if m_weekly:
     _, yy, m_code, dd, strike, _ = m_weekly.groups()
-    month_map = {
-        "1": 1,
-        "2": 2,
-        "3": 3,
-        "4": 4,
-        "5": 5,
-        "6": 6,
-        "7": 7,
-        "8": 8,
-        "9": 9,
-        "O": 10,
-        "N": 11,
-        "D": 12,
-    }
-    month = month_map.get(m_code, 9)
+    month_map = {"1": 1, "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "O": 10, "N": 11, "D": 12}
+    month = month_map[m_code]
     expiry_dt = datetime.datetime(
-        2000 + int(yy),
-        month,
-        int(dd),
-        15,
-        30,
-        tzinfo=datetime.timezone(datetime.timedelta(hours=5.5)),
+        2000 + int(yy), month, int(dd), 15, 30,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=5.5))
     )
     return underlying, spot_symbol, float(strike), opt_type, expiry_dt
+
+  # Monthly format: {UNDER}{YY}{MMM}{STRIKE}{CE/PE}
+  m_monthly = re.match(r"^([A-Za-z]+)(\d{2})([A-Za-z]{3})(\d{4,5})(CE|PE)$", clean)
+  if m_monthly:
+    _, yy, m_str, strike, _ = m_monthly.groups()
+    # Monthly contracts require explicit expiry resolution
+    expiry_dt = datetime.datetime(
+        2000 + int(yy), 9, 24 if underlying == "SENSEX" else 29, 15, 30,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=5.5))
+    )
+    return underlying, spot_symbol, float(strike), opt_type, expiry_dt
+
+  # Strictly refuse to guess
+  raise ValueError(f"UNRECOGNIZED_CONTRACT_FORMAT: Fail-closed on symbol '{clean}'")
 
   # Monthly format: {UNDER}{YY}{MMM}{STRIKE}{CE/PE}
   m_monthly = re.match(
