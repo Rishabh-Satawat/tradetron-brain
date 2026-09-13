@@ -1,0 +1,16 @@
+{
+  "schema_version": "regime-directive.v1",
+  "timestamp": "2026-09-12T19:42:29.121280",
+  "underlying": "BSE:SENSEX-INDEX",
+  "spot_price": 74781.76,
+  "atm_strike": 74800,
+  "pcr": 1.25,
+  "ivr": 16.6,
+  "vrp": 11.89,
+  "gex_cr": -4452.71,
+  "call_wall": 74800,
+  "put_floor": 74800,
+  "dominant_buildup": "Long Buildup",
+  "recommended_strategy": "S01 Bull Call Spread (Baseline)",
+  "execution_legs": "BUY 74800 CE / SELL 75300 CE (1 Lot)"
+}

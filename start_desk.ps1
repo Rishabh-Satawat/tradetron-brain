@@ -1,0 +1,1 @@
+& C:\kite-agent\.venv\Scripts\python.exe C:\kite-agent\brain\60-tools\python\preflight_check.py
