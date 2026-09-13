@@ -1,20 +1,26 @@
 ﻿# =============================================================================
 # File: 60-tools/python/operator_console.py
-# Description: Production Quant Desk Console (Dynamic Live Data & Full Blueprints)
+# Description: Production Quant Desk Console with Live Interactive Trade Finder
 # Runtime: Streamlit (.venv Python 3.14)
 # =============================================================================
 from datetime import datetime
 import json
 import os
+import sys
 from dotenv import load_dotenv
 import pandas as pd
 import streamlit as st
 
+# Import the Trade Finder Engine
+sys.path.append(r"C:\kite-agent\brain\60-tools\python")
+from trade_finder_engine import find_best_quant_trade
+
+# 1. Page Configuration
 st.set_page_config(
     page_title="Tradetron Brain — Quant Desk", page_icon="⚡", layout="wide"
 )
 
-# Load environment
+# 2. Load Secrets & Paths
 load_dotenv(r"C:\kite-agent\secrets\fyers.env")
 load_dotenv(r"C:\kite-agent\secrets\supabase.env")
 load_dotenv(r"C:\kite-agent\.env")
@@ -24,7 +30,7 @@ DIRECTIVE_PATH = r"C:\kite-agent\brain\70-ops\status\regime_directive.json"
 STRATEGY_DIR = r"C:\kite-agent\brain\30-strategies"
 TRIAL_PATH = r"C:\kite-agent\brain\31_TRIAL_REGISTER.md"
 
-# Load Dynamic Live Metrics from directive (Zero hardcoded fallbacks)
+# Load Dynamic Live Metrics from directive
 live_spot = 74781.76
 live_atm = 74800
 live_pcr = 1.25
@@ -78,9 +84,11 @@ st.sidebar.markdown(
 st.sidebar.divider()
 st.sidebar.info(f"📡 Feed: Live Synced\n⏰ Calculation:\n{last_updated} IST")
 
-# --- MAIN TABS ---
+# --- MAIN WORKSPACE ---
 st.title("⚡ TRADETRON BRAIN — OPERATOR CONSOLE")
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+
+tab_finder, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "🎯 Live Quant Trade Finder",
     "📊 Live Market Matrix",
     "🧠 Regime & Transition Watch",
     "📜 Strategy Master Blueprints",
@@ -88,18 +96,80 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📝 Trial Register",
 ])
 
+# ==========================================
+# TAB 0: LIVE QUANT TRADE FINDER
+# ==========================================
+with tab_finder:
+  st.subheader("🎯 Interactive Quant Trade Finder & Strike Selector")
+  st.write("Configure your parameters to generate a market-regime trade:")
+
+  t_col1, t_col2, t_col3 = st.columns(3)
+  selected_asset = t_col1.selectbox(
+      "Select Underlying Index / Asset:",
+      ["SENSEX", "NIFTY", "BANKNIFTY", "FINNIFTY"],
+  )
+  selected_horizon = t_col2.selectbox(
+      "Trading Horizon:",
+      ["Intraday (0-DTE / Day Trade)", "Positional (Weekly Expiry)"],
+  )
+  risk_profile = t_col3.selectbox(
+      "Risk Mandate:",
+      ["Defined Risk Spreads (Capped Loss)", "Pure Volatility Harvest"],
+  )
+
+  if st.button("🚀 Find Best Quant Trade Now", type="primary"):
+    with st.spinner("Analyzing live options chain, Greeks, and order flow..."):
+      card = find_best_quant_trade(asset=selected_asset)
+
+    if card:
+      st.success(f"### Recommended Trade: {card['trade_name']}")
+
+      m1, m2, m3, m4 = st.columns(4)
+      m1.metric("Market Stance", card["bias"])
+      m2.metric(f"{selected_asset} Spot", f"₹{card['spot_price']:,.2f}")
+      m3.metric("Put-Call Ratio (PCR)", f"{card['pcr']:.2f}")
+      m4.metric("Recommended Lots", f"{card['recommended_lots']} Lot(s)")
+
+      st.info(f"💡 Quant Rationale:")
+
+      st.write("#### 📐 Actionable Execution Legs (Exact Strikes to Trade):")
+      for leg in card["legs"]:
+        st.code(leg, language="text")
+
+      r1, r2, r3 = st.columns(3)
+      r1.metric("Max Profit / Lot", f"₹{card['max_profit_per_lot']:,.2f}")
+      r2.metric("Max Risk / Lot", f"₹{card['max_loss_per_lot']:,.2f}")
+      r3.metric("Total Account Risk (2% Cap)", f"₹{card['total_max_risk']:,.2f}")
+
+      st.markdown(f"""
+            **Exit Directives:**
+            * **Target Profit:** `+₹{card['target_pnl']:,.0f} * Multiplier`
+            * **Stop Loss:** `-₹{abs(card['sl_pnl']):,.0f} * Multiplier`
+            * **Intraday Square-off:** `{card['time_exit']}`
+            """)
+
+# ==========================================
 # TAB 1: LIVE MARKET MATRIX
+# ==========================================
 with tab1:
   st.subheader("Live Options Perception (Dynamic Live Stream)")
   col1, col2, col3, col4 = st.columns(4)
-  col1.metric("SENSEX Verified Spot", f"₹{live_spot:,.2f}", f"ATM: {live_atm}")
-  col2.metric("NIFTY 50 Spot", "₹23,635.10", "-120.40 (-0.51%)")
-  col3.metric(
-      "SENSEX PCR (OI)",
-      f"{live_pcr:.2f}",
-      "Put Writing Support" if live_pcr >= 1.0 else "Call Writer Heavy",
+  col1.metric(
+      label="SENSEX Verified Spot",
+      value=f"₹{live_spot:,.2f}",
+      delta=f"ATM: {live_atm}",
   )
-  col4.metric("ATM Straddle Cost", "₹933.55", "Expected Move: ±1.25%")
+  col2.metric(
+      label="NIFTY 50 Spot", value="₹23,635.10", delta="-120.40 (-0.51%)"
+  )
+  col3.metric(
+      label="SENSEX PCR (OI)",
+      value=f"{live_pcr:.2f}",
+      delta="Put Writing Support" if live_pcr >= 1.0 else "Call Writer Heavy",
+  )
+  col4.metric(
+      label="ATM Straddle Cost", value="₹933.55", delta="Expected Move: ±1.25%"
+  )
 
   st.divider()
   st.write(f"### Dynamic Strike Ladder (Centered on True ATM: {live_atm})")
@@ -118,7 +188,9 @@ with tab1:
     })
   st.dataframe(pd.DataFrame(ladder_data), use_container_width=True)
 
-# TAB 2: REGIME INTELLIGENCE & TRANSITIONS
+# ==========================================
+# TAB 2: REGIME & TRANSITION WATCH
+# ==========================================
 with tab2:
   st.subheader("Quantitative Regime Intelligence & Dynamic Transition Engine")
   c1, c2, c3, c4 = st.columns(4)
@@ -133,15 +205,16 @@ with tab2:
   st.divider()
   st.write("### 🔄 Intraday Strategy Transition Rules")
   st.markdown(f"""
-    The engine monitors multi-timeframe order flow to adapt strategies during market shifts:
-    - **Current State:** **BULLISH DEBIT SPREAD (S01)** holding above support floor with PCR at {live_pcr:.2f}.
-    - **Flip to S06 Bear Put Spread:** Triggers if Spot breaks below **₹74,700** on a completed 15m candle **AND** PCR drops below **0.85**.
-    - **Flip to Rangebound Iron Fly V6:** Triggers if 15m ADX drops below **20** and spot consolidates within 150 points of ATM.
+    * **Current State:** **BULLISH DEBIT SPREAD (S01)** holding above support floor with PCR at {live_pcr:.2f}.
+    * **Flip to S06 Bear Put Spread:** Triggers if Spot breaks below **₹74,700** on a completed 15m candle **AND** PCR drops below **0.85**.
+    * **Flip to Rangebound Iron Fly V6:** Triggers if 15m ADX drops below **20** and spot consolidates within 150 points of ATM.
     """)
 
+# ==========================================
 # TAB 3: COMPLETE TRADETRON MASTER BLUEPRINTS
+# ==========================================
 with tab3:
-  st.subheader("Complete Tradetron Master Blueprints (Full Specifications)")
+  st.subheader("Complete Tradetron Master Blueprints")
   strategy_options = {
       "S01 Bull Call Spread": "SENSEX_RSI_BULL_SPREAD.md",
       "S06 Bear Put Spread": "S06_SENSEX_BEAR_PUT_SPREAD.md",
@@ -157,12 +230,11 @@ with tab3:
     with open(target_file, "r", encoding="utf-8") as f:
       st.markdown(f.read())
   else:
-    st.info(
-        f"Blueprint file `{strategy_options[selected_name]}` will appear here"
-        " once generated."
-    )
+    st.info(f"Blueprint file `{strategy_options[selected_name]}` not found.")
 
+# ==========================================
 # TAB 4: RE-PRICER & STATUTORY FRICTION
+# ==========================================
 with tab4:
   st.subheader("Trade Log Re-Pricer (Zerodha Cost Engine)")
   uploaded_file = st.file_uploader("Upload Tradetron CSV trade log", type="csv")
@@ -174,7 +246,9 @@ with tab4:
     st.metric("Detected Cycles", cycles)
     st.metric("Statutory Friction (₹143.90/cycle)", f"₹{friction:,.2f}")
 
+# ==========================================
 # TAB 5: TRIAL REGISTER
+# ==========================================
 with tab5:
   st.subheader("Systematic Trial Register (`31_TRIAL_REGISTER.md`)")
   if os.path.exists(TRIAL_PATH):
