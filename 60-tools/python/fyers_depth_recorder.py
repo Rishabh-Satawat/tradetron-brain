@@ -140,18 +140,20 @@ def record_depth_snapshot():
     except Exception as e:
       pass
 
-  sensex_spot = next(
-    (r["close"] for r in records if "SENSEX-INDEX" in r["symbol"]),
-    records[0]["close"],
-)
-sensex_spread = next(
-    (r["spread"] for r in records if "SENSEX-INDEX" in r["symbol"]),
-    records[0]["spread"],
-)
-print(
-    f"⚡ [{now_ist.strftime('%H:%M:%S')}] Logged {len(records)} symbols with"
-    f" Bid/Ask Depth (SENSEX: ₹{sensex_spot:,.2f} | Spread: ₹{sensex_spread})"
-)
+  # Extract SENSEX closing price safely
+  sensex_close = records[0]["close"]
+  sensex_spread = records[0]["spread"]
+  for r in records:
+    if "SENSEX-INDEX" in r.get("symbol", ""):
+      sensex_close = r["close"]
+      sensex_spread = r["spread"]
+      break
+
+  print(
+      f"⚡ [{now_ist.strftime('%H:%M:%S')}] Logged {len(records)} symbols with"
+      f" Bid/Ask Depth (SENSEX: ₹{sensex_close:,.2f} | Spread:"
+      f" ₹{sensex_spread})"
+  )
 
 
 def start_recorder_daemon():
