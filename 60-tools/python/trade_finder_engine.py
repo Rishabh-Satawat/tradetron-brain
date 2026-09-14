@@ -292,39 +292,41 @@ def find_best_quant_trade(
 
 
 if __name__ == "__main__":
-  asset_arg = sys.argv if len(sys.argv) > 1 else "SENSEX"
+  raw = sys.argv[1:]
+  asset_arg = raw[0] if len(raw) > 0 else "SENSEX"
   card = find_best_quant_trade(asset=asset_arg)
 
-  print("=" * 85)
-  print(f"🎯 LIVE QUANT TRADE RECOMMENDATION: {card['trade_name']}")
-  print(f"⏰ Generated: {card['timestamp']} | Asset: {card['asset']}")
-  print("=" * 85)
-  print(f"📌 Market Stance  : {card['bias']} ({card['regime_style']})")
-  print(
-      f"📊 Spot Reference : ₹{card['spot_price']:,.2f} (ATM Strike:"
-      f" {card['atm_strike']:,.0f})"
-  )
-  print(
-      f"🛡️ Structural Map : Support @ ₹{card['put_floor']:,.0f} | Resistance @"
-      f" ₹{card['call_wall']:,.0f}"
-  )
-  print(f"⚖️ Market PCR (OI): {card['pcr']:.2f}")
-  print("-" * 85)
-  print("📐 ACTIONABLE EXECUTION LEGS:")
-  for leg in card["legs"]:
-    print(f"   {leg}")
-  print("-" * 85)
-  print(
-      f"💰 Risk Profile   : Max Profit: ₹{card['max_profit_per_lot']:,.2f}/lot |"
-      f" Max Loss: ₹{card['max_loss_per_lot']:,.2f}/lot"
-  )
-  print(
-      f"🔢 Position Sizing: {card['recommended_lots']} Lot(s) (Based on 2% cash"
-      f" risk: ₹{card['total_max_risk']:,.2f})"
-  )
-  print(
-      f"🎯 Exit Directives: Target: +₹{card['target_pnl']:,.0f} | Stop Loss:"
-      f" -₹{abs(card['sl_pnl']):,.0f} | Hard Exit: {card['time_exit']}"
-  )
-  print(f"📖 Quant Rationale: {card['rationale']}")
-  print("=" * 85)
+  if card:
+    print("=" * 85)
+    print(f"🎯 LIVE QUANT TRADE RECOMMENDATION: {card['trade_name']}")
+    print(f"⏰ Generated: {card['timestamp']} | Asset: {card['asset']}")
+    print("=" * 85)
+    print(f"📌 Market Stance  : {card['bias']} ({card['regime_style']})")
+    print(
+        f"📊 Spot Reference : ₹{card['spot_price']:,.2f} (ATM Strike:"
+        f" {card['atm_strike']:,.0f})"
+    )
+    print(
+        f"🛡️ Structural Map : Support @ ₹{card['put_floor']:,.0f} | Resistance"
+        f" @ ₹{card['call_wall']:,.0f}"
+    )
+    print(f"⚖️ Market PCR (OI): {card['pcr']:.2f}")
+    print("-" * 85)
+    print("📐 ACTIONABLE EXECUTION LEGS:")
+    for leg in card["legs"]:
+      print(f"   {leg}")
+    print("-" * 85)
+    print(
+        f"💰 Risk Profile   : Max Profit: ₹{card['max_profit_per_lot']:,.2f}/lot"
+        f" | Max Loss: ₹{card['max_loss_per_lot']:,.2f}/lot"
+    )
+    print(
+        f"🔢 Position Sizing: {card['recommended_lots']} Lot(s) (Based on 2%"
+        f" cash risk: ₹{card['total_max_risk']:,.2f})"
+    )
+    print(
+        f"🎯 Exit Directives: Target: +₹{card['target_pnl']:,.0f} | Stop Loss:"
+        f" -₹{abs(card['sl_pnl']):,.0f} | Hard Exit: {card['time_exit']}"
+    )
+    print(f"📖 Quant Rationale: {card['rationale']}")
+    print("=" * 85)
