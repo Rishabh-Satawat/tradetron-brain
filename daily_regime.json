@@ -1,0 +1,21 @@
+{
+  "index": "NIFTY",
+  "spot_price": 23398.1,
+  "market_regime": "RANGEBOUND_EXPIRY_DECAY",
+  "bias": "NEUTRAL",
+  "confidence_score_pct": 86,
+  "recommended_strategy": "NIFTY 0-DTE Iron Fly V6",
+  "atm_strike": 23400,
+  "rationale": {
+    "technical_summary": "Nifty recovered sharply from intraday low of 23,231.40 to consolidate around 23,400. Positive cross-index divergence in Bank Nifty (+0.24%) provides structural support, keeping Nifty rangebound in a tight band.",
+    "derivatives_summary": "PCR of 1.12 confirms robust put writing support at lower strikes. Combined with \u20b9204 ATM straddle premium and a \u00b10.87% expected expiry move, conditions ideal for theta decay centered at 23,400 ATM strike.",
+    "risk_verdict": "Optimal risk-reward for short volatility delta-neutral execution. Deploy NIFTY 0-DTE Iron Fly V6 centered at 23400 strike with strict risk boundaries."
+  },
+  "execution_directives": {
+    "arm_tradetron": true,
+    "entry_window": "09:30 AM - 02:00 PM IST",
+    "profit_target_inr": 2500,
+    "stop_loss_inr": 2500,
+    "square_off_time": "03:10 PM IST"
+  }
+}
