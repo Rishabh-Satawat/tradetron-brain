@@ -1,5 +1,5 @@
 # NIFTY 50 0-DTE Weekly Expiry Iron Fly V6 — Tradetron Build Sheet
-# Generated on 2026-09-14 15:37:32 IST for Tuesday Expiry
+# Generated on 2026-09-15 10:00:43 IST for Tuesday Expiry
 # Underlying: NSE NIFTY 50 (NFO) | Lot Size: 65 | Strike Step: 50 points
 
 ## Strategy Profile:

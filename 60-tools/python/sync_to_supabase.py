@@ -1,195 +1,233 @@
 # =============================================================================
 # File: 60-tools/python/sync_to_supabase.py
-# Description: Streams Fyers Option Chain with Local Black-76 Greeks to Supabase
-# Runtime: Python 3.14.7 (.venv)
+# Description: Syncs Live Option Chains & Greeks (NIFTY & SENSEX) to Supabase Cloud
+# Table: public.option_chain_snapshots (Schema Matched)
+# Primary Data Feed: Dhan HQ v2 API (Scrip 13: NIFTY 50 | Scrip 51: BSE SENSEX)
 # =============================================================================
 import datetime
 import math
 import os
+import sys
 from dotenv import load_dotenv
-from fyers_apiv3 import fyersModel
-import numpy as np
-import pandas as pd
-from scipy.optimize import brentq
+import requests
 from scipy.stats import norm
-from supabase import create_client, Client
+from supabase import Client, create_client
 
-# 1. Load Secrets
-load_dotenv(r"C:\kite-agent\secrets\supabase.env")
-load_dotenv(r"C:\kite-agent\secrets\fyers.env")
+# 1. Load Credentials
+for p in [
+    r"C:\kite-agent\secrets\dhan.env",
+    r"C:\kite-agent\brain\secrets\dhan.env",
+]:
+  if os.path.exists(p):
+    load_dotenv(p)
+    break
+
+token = os.getenv("DHAN_ACCESS_TOKEN") or os.getenv("DHAN_TOKEN")
+client_id = os.getenv("DHAN_CLIENT_ID", "1111831735")
+
+# Load Supabase
+supabase_env = r"C:\kite-agent\secrets\supabase.env"
+if os.path.exists(supabase_env):
+  load_dotenv(supabase_env)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
 SUPABASE_KEY = (
-    os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY", "").strip()
-)
-APP_ID = os.getenv("FYERS_APP_ID", "").strip()
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    or os.getenv("SUPABASE_KEY", "")
+).strip()
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-  print("❌ Error: Missing SUPABASE_URL or SUPABASE_KEY in secrets/supabase.env")
-  exit(1)
+  print("❌ Error: SUPABASE_URL or SUPABASE_KEY missing in secrets/supabase.env")
+  sys.exit(1)
 
-with open(r"C:\kite-agent\secrets\fyers_access_token.txt") as f:
-  FYERS_TOKEN = f.read().strip()
-
-# Initialize API Clients
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-fyers = fyersModel.FyersModel(
-    client_id=APP_ID, is_async=False, token=FYERS_TOKEN, log_path=""
-)
+
+DHAN_HEADERS = {
+    "access-token": token,
+    "client-id": client_id,
+    "Content-Type": "application/json",
+}
 
 
-# --- 2. Black-76 Mathematical Greeks Engine ---
-def black76_price(F, K, T, r, sigma, option_type="CE"):
-  if T <= 0 or sigma <= 0:
-    return max(0.0, F - K) if option_type == "CE" else max(0.0, K - F)
-  d1 = (np.log(F / K) + (0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-  d2 = d1 - sigma * np.sqrt(T)
-  df = np.exp(-r * T)
-  return (
-      df * (F * norm.cdf(d1) - K * norm.cdf(d2))
-      if option_type == "CE"
-      else df * (K * norm.cdf(-d2) - F * norm.cdf(-d1))
-  )
-
-
-def solve_iv(price, F, K, T, r=0.0675, option_type="CE"):
-  if T <= 0.001 or price <= 0:
-    return 0.15
-  df = np.exp(-r * T)
-  intrinsic = max(0.0, F - K) if option_type == "CE" else max(0.0, K - F)
-  if price < df * intrinsic:
-    return 0.10
-  try:
-    return brentq(
-        lambda s: black76_price(F, K, T, r, s, option_type=option_type) - price,
-        0.01,
-        3.00,
-        xtol=1e-4,
-    )
-  except Exception:
-    return 0.15
-
-
-def calculate_greeks(F, K, T, r, sigma, option_type="CE"):
-  if T <= 0 or sigma <= 0:
+def calculate_black76_greeks(spot, strike, t, r, iv, opt_type):
+  """Computes Black-76 Greeks for European index options."""
+  if t <= 0.0001 or iv <= 0.001:
     return {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0}
-  d1 = (np.log(F / K) + (0.5 * sigma**2) * T) / (sigma * np.sqrt(T))
-  d2 = d1 - sigma * np.sqrt(T)
-  df = np.exp(-r * T)
 
-  gamma = (df * norm.pdf(d1)) / (F * sigma * np.sqrt(T))
-  vega = (F * df * norm.pdf(d1) * np.sqrt(T)) / 100.0
+  try:
+    d1 = (math.log(spot / strike) + 0.5 * (iv**2) * t) / (iv * math.sqrt(t))
+    d2 = d1 - iv * math.sqrt(t)
 
-  if option_type == "CE":
-    delta = df * norm.cdf(d1)
-    theta = (
-        -(F * df * norm.pdf(d1) * sigma) / (2 * np.sqrt(T))
-        - r * K * df * norm.cdf(d2)
-        + r * F * df * norm.cdf(d1)
-    ) / 365.0
-  else:
-    delta = -df * norm.cdf(-d1)
-    theta = (
-        -(F * df * norm.pdf(d1) * sigma) / (2 * np.sqrt(T))
-        + r * K * df * norm.cdf(-d2)
-        - r * F * df * norm.cdf(-d1)
-    ) / 365.0
+    pdf_d1 = norm.pdf(d1)
+    cdf_d1 = norm.cdf(d1)
+    cdf_neg_d1 = norm.cdf(-d1)
 
-  return {
-      "delta": round(float(delta), 4),
-      "gamma": round(float(gamma), 6),
-      "theta": round(float(theta), 2),
-      "vega": round(float(vega), 2),
-  }
+    gamma = pdf_d1 / (spot * iv * math.sqrt(t))
+    vega = (spot * math.sqrt(t) * pdf_d1) / 100.0
 
+    if opt_type == "CE":
+      delta = cdf_d1
+      theta = (
+          -(spot * pdf_d1 * iv) / (2 * math.sqrt(t))
+          - r * strike * math.exp(-r * t) * norm.cdf(d2)
+      ) / 365.0
+    else:
+      delta = -cdf_neg_d1
+      theta = (
+          -(spot * pdf_d1 * iv) / (2 * math.sqrt(t))
+          + r * strike * math.exp(-r * t) * norm.cdf(-d2)
+      ) / 365.0
 
-def get_val(d, keys, default=0.0):
-  for k in keys:
-    v = d.get(k)
-    if v is not None and v != 0 and v != "":
-      return float(v)
-  return default
+    return {
+        "delta": round(float(delta), 4),
+        "gamma": round(float(gamma), 6),
+        "theta": round(float(theta), 2),
+        "vega": round(float(vega), 2),
+    }
+  except Exception:
+    return {"delta": 0.0, "gamma": 0.0, "theta": 0.0, "vega": 0.0}
 
 
-# --- 3. Sync Option Chain with Real Greeks ---
-def sync_chain_to_cloud(symbol="NSE:NIFTY50-INDEX", strike_count=15):
-  print(f"\n🔄 Fetching {symbol} from Fyers and computing Greeks...")
-  res = fyers.optionchain(
-      data={"symbol": symbol, "strikecount": strike_count, "timestamp": ""}
+def sync_index_option_chain(symbol_name, scrip_id):
+  print(f"\n🔄 Fetching {symbol_name} from Dhan and computing Greeks...")
+
+  # Dynamic Expiry Lookup
+  active_expiry = None
+  try:
+    exp_res = requests.post(
+        "https://api.dhan.co/v2/optionchain/expirylist",
+        headers=DHAN_HEADERS,
+        json={"UnderlyingScrip": scrip_id, "UnderlyingSeg": "IDX_I"},
+        timeout=6,
+    )
+    if exp_res.status_code == 200:
+      exp_list = exp_res.json().get("data", [])
+      if exp_list:
+        active_expiry = exp_list[0]
+  except Exception as e:
+    print(f"⚠️ Expiry list fetch note: {e}")
+
+  if not active_expiry:
+    active_expiry = "2026-09-17" if scrip_id == 51 else "2026-09-22"
+
+  # Option Chain Query
+  oc_res = requests.post(
+      "https://api.dhan.co/v2/optionchain",
+      headers=DHAN_HEADERS,
+      json={
+          "UnderlyingScrip": scrip_id,
+          "UnderlyingSeg": "IDX_I",
+          "Expiry": active_expiry,
+      },
+      timeout=10,
   )
 
-  if res.get("s") != "ok":
-    print(f"❌ Fyers Error for {symbol}: {res.get('message')}")
-    return
+  if oc_res.status_code != 200:
+    print(f"❌ Error fetching Dhan option chain: {oc_res.status_code}")
+    return 0
 
-  chain_data = res.get("data", {})
-  spot_price = float(chain_data.get("spotPrice", 0))
-  options_list = chain_data.get("optionsChain", [])
+  chain_data = oc_res.json().get("data", {})
+  spot = float(chain_data.get("last_price", 0.0))
+  oc = chain_data.get("oc", {})
 
-  # Time to expiry: ~2.5 days for weekly contracts
-  T_years = max(2.5 / 365.0, 0.002)
-  r = 0.0675
+  if spot <= 0 or not oc:
+    print(f"⚠️ Empty option chain data received for {symbol_name}.")
+    return 0
 
-  records_to_insert = []
-  for item in options_list:
-    strike = item.get("strike_price")
-    if strike == -1:
-      if spot_price == 0:
-        spot_price = get_val(
-            item, ["ltp", "prev_close_price", "close_price"], default=0.0
-        )
-      continue
-
-    opt_type = item.get("option_type")
-    ltp = get_val(
-        item, ["ltp", "prev_close_price", "close_price"], default=0.0
+  # Days to expiry
+  try:
+    exp_dt = datetime.datetime.strptime(active_expiry, "%Y-%m-%d")
+    days_to_exp = max(
+        0.001, (exp_dt - datetime.datetime.now()).total_seconds() / 86400.0
     )
+    t = days_to_exp / 365.0
+  except Exception:
+    t = 1.0 / 365.0
 
-    # If Fyers sends 0 for IV, our mathematical solver derives it
-    broker_iv = get_val(item, ["iv"], default=0.0)
-    if broker_iv > 0:
-      solved_iv = broker_iv / 100.0 if broker_iv > 1.0 else broker_iv
-    else:
-      solved_iv = solve_iv(
-          ltp, spot_price, float(strike), T_years, r=r, option_type=opt_type
+  r = 0.07  # RBI benchmark rate ~7%
+  now_iso = datetime.datetime.now().isoformat()
+  records = []
+
+  for strike_str, leg in oc.items():
+    strike = float(strike_str)
+
+    # CE
+    ce = leg.get("ce", {})
+    if ce:
+      ce_price = float(ce.get("last_price", 0.0))
+      ce_iv = float(ce.get("iv", 0.0)) / 100.0 if ce.get("iv") else 0.13
+      greeks_ce = calculate_black76_greeks(spot, strike, t, r, ce_iv, "CE")
+      records.append({
+          "underlying": symbol_name,
+          "spot_price": spot,
+          "strike_price": strike,
+          "option_type": "CE",
+          "ltp": ce_price,
+          "oi": int(ce.get("oi", 0)),
+          "volume": int(ce.get("volume", 0)),
+          "iv": round(ce_iv * 100, 2),
+          "delta": greeks_ce["delta"],
+          "gamma": greeks_ce["gamma"],
+          "theta": greeks_ce["theta"],
+          "vega": greeks_ce["vega"],
+          "created_at": now_iso,
+      })
+
+    # PE
+    pe = leg.get("pe", {})
+    if pe:
+      pe_price = float(pe.get("last_price", 0.0))
+      pe_iv = float(pe.get("iv", 0.0)) / 100.0 if pe.get("iv") else 0.13
+      greeks_pe = calculate_black76_greeks(spot, strike, t, r, pe_iv, "PE")
+      records.append({
+          "underlying": symbol_name,
+          "spot_price": spot,
+          "strike_price": strike,
+          "option_type": "PE",
+          "ltp": pe_price,
+          "oi": int(pe.get("oi", 0)),
+          "volume": int(pe.get("volume", 0)),
+          "iv": round(pe_iv * 100, 2),
+          "delta": greeks_pe["delta"],
+          "gamma": greeks_pe["gamma"],
+          "theta": greeks_pe["theta"],
+          "vega": greeks_pe["vega"],
+          "created_at": now_iso,
+      })
+
+  # Batch Insert into Supabase (Chunks of 50)
+  if records:
+    try:
+      for i in range(0, len(records), 50):
+        chunk = records[i : i + 50]
+        supabase.table("option_chain_snapshots").insert(chunk).execute()
+      print(
+          f"✅ Synced {len(records)} strike records with FULL GREEKS for"
+          f" {symbol_name} to Supabase Cloud!"
       )
+      return len(records)
+    except Exception as e:
+      print(f"❌ Supabase sync error: {e}")
+      return 0
+  return 0
 
-    greeks = calculate_greeks(
-        spot_price,
-        float(strike),
-        T_years,
-        r=r,
-        sigma=solved_iv,
-        option_type=opt_type,
-    )
 
-    records_to_insert.append({
-        "underlying": symbol,
-        "spot_price": spot_price,
-        "strike_price": float(strike),
-        "option_type": opt_type,
-        "ltp": ltp,
-        "oi": int(get_val(item, ["oi"], default=0)),
-        "volume": int(get_val(item, ["volume"], default=0)),
-        "iv": round(solved_iv * 100, 2),
-        "delta": greeks["delta"],
-        "gamma": greeks["gamma"],
-        "theta": greeks["theta"],
-        "vega": greeks["vega"],
-    })
+def run_full_sync():
+  print("=" * 75)
+  print("☁️ DHAN HQ v2 ➔ SUPABASE OPTION CHAIN SYNC ENGINE (BLACK-76 GREEKS)")
+  print(
+      f"⏰ Timestamp: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S IST')}"
+  )
+  print("=" * 75)
 
-  if records_to_insert:
-    supabase.table("option_chain_snapshots").insert(records_to_insert).execute()
-    print(
-        f"✅ Synced {len(records_to_insert)} strike records with FULL GREEKS"
-        f" for {symbol} to Supabase Cloud!"
-    )
+  # Sync NIFTY (13) & SENSEX (51)
+  sync_index_option_chain("NSE:NIFTY50-INDEX", 13)
+  sync_index_option_chain("BSE:SENSEX-INDEX", 51)
+
+  print("\n" + "=" * 75)
+  print("🎉 CLOUD GREEKS SYNCHRONIZATION COMPLETE!")
+  print("=" * 75)
 
 
 if __name__ == "__main__":
-  print("=" * 70)
-  print("☁️ SUPABASE OPTION CHAIN SYNC ENGINE (BLACK-76 GREEKS)")
-  print("=" * 70)
-  sync_chain_to_cloud("NSE:NIFTY50-INDEX", strike_count=15)
-  sync_chain_to_cloud("BSE:SENSEX-INDEX", strike_count=15)
-  print("=" * 70)
+  run_full_sync()
