@@ -1,0 +1,103 @@
+{
+  "_format": "tt-strategy/v2",
+  "_readme": {
+    "about": "Stockera Quant Tradetron ASB export. Import via the ASB Import button.",
+    "strategy": "NIFTY 0-DTE Weekly Expiry Iron Fly V6",
+    "lot_size": 65,
+    "underlying": "NIFTY 50 (NFO)"
+  },
+  "name": "NIFTY_0DTE_Iron_Fly_V6",
+  "description": "Stockera Quant: Automated delta-neutral 0-DTE Iron Fly with 150-pt protective wings.",
+  "tags": [
+    "StockeraQuant",
+    "0DTE",
+    "NIFTY",
+    "IronFly"
+  ],
+  "variables": [],
+  "sets": [
+    {
+      "list": 0,
+      "name": "Set 1 - 0-DTE Entry & Core Legs",
+      "conditions": [
+        {
+          "type": "Entry",
+          "conditionValue": "( tt_Time ( 'NSE' ) >= tt_Number ( '930' ) ) and ( tt_Time ( 'NSE' ) <= tt_Number ( '1400' ) )",
+          "conditionDisplay": "( Time ( 'NSE' ) >= Number ( '930' ) ) and ( Time ( 'NSE' ) <= Number ( '1400' ) )",
+          "subType": "None",
+          "visible": 1,
+          "legs": [
+            {
+              "optionType": "CE",
+              "expiryType": "Current Week",
+              "expiry": "tt_curr_weekexpiry('NIFTY 50')",
+              "strikeType": "Fx",
+              "strike": "( tt_ATM_SPOT ( 'NIFTY 50', '3' ) )",
+              "strikeDisplay": "( ATM SPOT ( 'NIFTY 50', '3' ) )",
+              "qty": "tt_lots(1,'INSTRUMENT','CE')",
+              "qtyType": "Lots",
+              "qtyDisplay": "1",
+              "buySell": "B",
+              "productType": "NRML",
+              "underlyingSymbol": "NIFTY 50",
+              "isOvernightProtectionLeg": "No"
+            },
+            {
+              "optionType": "PE",
+              "expiryType": "Current Week",
+              "expiry": "tt_curr_weekexpiry('NIFTY 50')",
+              "strikeType": "Fx",
+              "strike": "( tt_ATM_SPOT ( 'NIFTY 50', '-3' ) )",
+              "strikeDisplay": "( ATM SPOT ( 'NIFTY 50', '-3' ) )",
+              "qty": "tt_lots(1,'INSTRUMENT','PE')",
+              "qtyType": "Lots",
+              "qtyDisplay": "1",
+              "buySell": "B",
+              "productType": "NRML",
+              "underlyingSymbol": "NIFTY 50",
+              "isOvernightProtectionLeg": "No"
+            },
+            {
+              "optionType": "CE",
+              "expiryType": "Current Week",
+              "expiry": "tt_curr_weekexpiry('NIFTY 50')",
+              "strikeType": "Fx",
+              "strike": "( tt_ATM_SPOT ( 'NIFTY 50', '0' ) )",
+              "strikeDisplay": "( ATM SPOT ( 'NIFTY 50', '0' ) )",
+              "qty": "tt_lots(1,'INSTRUMENT','CE')",
+              "qtyType": "Lots",
+              "qtyDisplay": "1",
+              "buySell": "S",
+              "productType": "NRML",
+              "underlyingSymbol": "NIFTY 50",
+              "isOvernightProtectionLeg": "No"
+            },
+            {
+              "optionType": "PE",
+              "expiryType": "Current Week",
+              "expiry": "tt_curr_weekexpiry('NIFTY 50')",
+              "strikeType": "Fx",
+              "strike": "( tt_ATM_SPOT ( 'NIFTY 50', '0' ) )",
+              "strikeDisplay": "( ATM SPOT ( 'NIFTY 50', '0' ) )",
+              "qty": "tt_lots(1,'INSTRUMENT','PE')",
+              "qtyType": "Lots",
+              "qtyDisplay": "1",
+              "buySell": "S",
+              "productType": "NRML",
+              "underlyingSymbol": "NIFTY 50",
+              "isOvernightProtectionLeg": "No"
+            }
+          ],
+          "extra": {
+            "name": null,
+            "variables": []
+          }
+        }
+      ]
+    }
+  ],
+  "universalExit": {
+    "conditionValue": "( PNL ( 'strategy_id' , 'run_counter' ) >= tt_Number ( '2500' ) ) or ( PNL ( 'strategy_id' , 'run_counter' ) <= tt_Number ( '-2500' ) ) or ( tt_Time ( 'NSE' ) >= tt_Number ( '1510' ) )",
+    "conditionDisplay": "( PNL >= Number ( '2500' ) ) or ( PNL <= Number ( '-2500' ) ) or ( Time ( 'NSE' ) >= Number ( '1510' ) )"
+  }
+}
